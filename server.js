@@ -54,7 +54,6 @@ wss.on('connection', (ws) => {
             return;
         }
 
-        // Strict Host-Only enforcement: Only the host can broadcast media loads, play/pause states, and time syncs
         if (['PLAY_YOUTUBE', 'LOAD_VIDEO', 'PLAY_PLAYLIST', 'MEDIA_SYNC', 'SYNC_TIME', 'CONTROL'].includes(msg.type)) {
             if (!boundRoom || !rooms[boundRoom] || rooms[boundRoom].host !== ws) return;
             if (['PLAY_YOUTUBE', 'LOAD_VIDEO', 'PLAY_PLAYLIST'].includes(msg.type)) {
