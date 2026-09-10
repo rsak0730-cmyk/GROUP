@@ -1,0 +1,9 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.group_sigma_lime.twa",
+        "sha256_cert_fingerprints": ["AD:77:48:A2:10:D0:53:E0:53:16:30:BB:AD:0A:03:D1:EF:C8:E3:49:BB:3E:89:E5:78:9E:DF:D4:BC:3E:66:0B"]
+      }
+    }]
+
