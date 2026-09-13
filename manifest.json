@@ -1,10 +1,12 @@
 {
   "name": "SyncBeat",
   "short_name": "SyncBeat",
+  "description": "Multi-Device Real-Time Room Synchronization and Watch Party platform for movies, YouTube, and music.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0b0f19",
-  "theme_color": "#7c3aed",
+  "background_color": "#07070a",
+  "theme_color": "#07070a",
   "orientation": "portrait",
   "icons": [
     {
