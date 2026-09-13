@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncBeat - Real-Time Multi-Device Synchronization</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+    <meta name="theme-color" id="metaThemeColor" content="#fbbf24">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        themeBg: 'rgb(var(--color-bg-base) / <alpha-value>)',
+                        themeCard: 'rgb(var(--color-bg-card) / <alpha-value>)',
+                        themeAccent: 'rgb(var(--color-accent) / <alpha-value>)',
+                        themeText: 'rgb(var(--color-text-main) / <alpha-value>)',
+                        themeMuted: 'rgb(var(--color-text-muted) / <alpha-value>)',
+                        themeBorder: 'rgb(var(--color-border) / <alpha-value>)',
+                        themeBtnText: 'rgb(var(--color-btn-text) / <alpha-value>)'
+                    },
+                    animation: {
+                        'float': 'float 4s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --color-accent: 251 191 36;
+            --color-bg-base: 23 20 15;
+            --color-bg-card: 36 31 22;
+            --color-text-main: 254 243 199;
+            --color-text-muted: 202 138 4;
+            --color-border: 113 63 18; 
+            --color-shadow: 251 191 36;
+            --color-btn-text: 69 26 3;
+            transition: --color-accent 1s, --color-bg-base 1s, --color-bg-card 1s;
+        }
+
+        body {
+            transition: background-color 0.8s ease, color 0.8s ease;
+            overscroll-behavior-y: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        input {
+            -webkit-user-select: auto;
+            user-select: auto;
+        }
+
+        .shadow-glow { box-shadow: 0 0 15px rgb(var(--color-shadow) / 0.5); transition: box-shadow 0.8s ease; }
+        .shadow-heavy { box-shadow: 0 20px 50px rgb(var(--color-shadow) / 0.15); transition: box-shadow 0.8s ease; }
+        .shadow-btn { box-shadow: 0 0 30px rgb(var(--color-shadow) / 0.5); transition: box-shadow 0.8s ease; }
+
+        .btn-3d {
+            position: relative; 
+            transform-style: preserve-3d;
+            box-shadow: 0 6px 0 0 rgb(var(--color-border)), 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent; 
+            outline: none; 
+            -webkit-touch-callout: none;
+        }
+        
+        .btn-3d::after {
+            content: '';
+            position: absolute;
+            inset: -15px;
+            background: transparent;
+        }
+
+        .btn-3d:active {
+            transform: translateY(4px) scale(0.98);
+            box-shadow: 0 2px 0 0 rgb(var(--color-border)), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .card-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        
+        @media (hover: hover) {
+            .card-3d:hover {
+                transform: translateY(-8px) rotateX(3deg) rotateY(2deg);
+                box-shadow: 0 20px 40px rgb(var(--color-accent) / 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+            }
+        }
+
+        .sparkle-bg {
+            background-image: radial-gradient(rgb(var(--color-accent) / 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: bg-pan 10s linear infinite;
+        }
+        @keyframes bg-pan {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        @keyframes eq-1 { 0%, 100% { height: 6px; } 50% { height: 18px; } }
+        @keyframes eq-2 { 0%, 100% { height: 18px; } 50% { height: 8px; } }
+        @keyframes eq-3 { 0%, 100% { height: 10px; } 50% { height: 20px; } }
+        @keyframes shimmer { 
+            0% { transform: translateX(-150%) skewX(-20deg); } 
+            50%, 100% { transform: translateX(150%) skewX(-20deg); } 
+        }
+
+        .anim-bar-1 { animation: eq-1 1.1s ease-in-out infinite; }
+        .anim-bar-2 { animation: eq-2 1.3s ease-in-out infinite; }
+        .anim-bar-3 { animation: eq-3 1.0s ease-in-out infinite; }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: rgb(var(--color-accent));
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgb(var(--color-shadow) / 0.8), inset 0 -3px 0 rgb(var(--color-border) / 0.8);
+            transition: all 0.2s;
+        }
+        input[type=range]:disabled::-webkit-slider-thumb {
+            background: rgb(var(--color-border));
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="bg-themeBg text-themeText min-h-screen flex flex-col font-sans select-none overflow-x-hidden sparkle-bg">
+
+    <header class="bg-themeCard border-b border-themeBorder/50 px-4 py-3 flex items-center justify-between shadow-lg sticky top-0 z-40 transition-colors duration-700">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
+            <div class="w-10 h-10 rounded-xl bg-themeAccent flex items-center justify-center shadow-glow transition-colors duration-700 overflow-hidden relative">
+                <div class="absolute inset-0 bg-white/30 w-full h-full animate-[shimmer_3s_infinite_linear]"></div>
+                <div class="flex items-end justify-center space-x-[2px] h-5 relative z-10">
+                    <div class="w-[3px] bg-themeBtnText rounded-t-sm anim-bar-1 transition-colors duration-700"></div>
+                    <div class="w-[3px] bg-themeBtnText rounded-t-sm anim-bar-2 transition-colors duration-700"></div>
+                    <div class="w-[3px] bg-themeBtnText rounded-t-sm anim-bar-3 transition-colors duration-700"></div>
+                </div>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wider text-themeAccent transition-colors duration-700 drop-shadow-md">SyncBeat</h1>
+                <p class="text-xs text-themeText opacity-60">Audio Sync</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <div id="connectionStatus" class="flex items-center space-x-2 bg-black/40 px-3 py-1.5 rounded-full border border-themeBorder/50 text-xs shadow-inner">
+                <span class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]" id="statusDot"></span>
+                <span id="statusText" class="text-themeText font-medium">Connecting...</span>
+            </div>
+            <button onclick="openSettingsModal()" class="btn-3d w-10 h-10 rounded-lg bg-black/40 border border-themeBorder/30 flex items-center justify-center text-themeAccent transition">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center p-4 max-w-7xl mx-auto w-full">
+
+        <div id="homeView" class="w-full max-w-md bg-themeCard border border-themeBorder/50 rounded-2xl p-6 space-y-6 card-3d animate-float transition-colors duration-700">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-bold text-themeAccent transition-colors duration-700">Synchronized Audio</h2>
+                <p class="text-sm text-themeText opacity-80">Search songs by name & listen together glitch-free across devices.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-themeMuted uppercase tracking-wider mb-1">Your Name</label>
+                    <input type="text" id="userNameInput" placeholder="Enter your display name" class="w-full bg-black/20 border border-themeBorder/60 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-themeAccent shadow-inner transition">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="createRoom()" class="btn-3d w-full bg-themeAccent text-themeBtnText font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Host Room</span>
+                    </button>
+                    <button onclick="showJoinModal()" class="btn-3d w-full bg-black/40 text-themeAccent font-bold py-3 px-4 rounded-xl border border-themeBorder transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Join Room</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="roomView" class="w-full hidden flex-col lg:flex-row gap-6">
+            
+            <div class="flex-1 flex flex-col space-y-4">
+                <div class="card-3d bg-themeCard border border-themeBorder/50 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 transition-colors duration-700">
+                    <div class="flex items-center space-x-3">
+                        <span class="bg-black/30 text-themeAccent border border-themeBorder/70 text-xs font-mono px-3 py-1.5 rounded-lg flex items-center space-x-2 shadow-inner">
+                            <i class="fa-solid fa-key text-xs"></i>
+                            <span id="displayRoomCode" class="font-bold tracking-widest text-sm">----</span>
+                        </span>
+                        <button onclick="copyRoomCode()" class="btn-3d text-xs bg-black/40 px-3 py-2 rounded-lg text-themeText transition flex items-center space-x-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy Link</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="roleBadge" class="text-xs px-2.5 py-1 rounded-full font-semibold uppercase shadow-inner">Member</span>
+                        <button onclick="leaveRoom()" class="btn-3d bg-red-900/40 text-red-400 border border-red-700/50 text-xs font-semibold px-3 py-2 rounded-lg transition">
+                            Leave Room
+                        </button>
+                    </div>
+                </div>
+
+                <div id="hostControlsWrapper" class="relative w-full hidden z-20">
+                    <div id="mediaInputContainer" class="card-3d bg-themeCard border border-themeBorder/50 rounded-xl p-4 flex items-center space-x-3 relative z-30 transition-colors duration-700">
+                        <input type="text" id="mediaUrlInput" onkeydown="handleSearchKey(event)" placeholder="Search song by name or paste URL..." class="flex-1 bg-black/20 border border-themeBorder/60 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-themeAccent shadow-inner transition">
+                        <button id="searchBtn" onclick="searchMedia()" class="btn-3d bg-themeAccent text-themeBtnText text-sm font-bold px-5 py-2.5 rounded-lg w-28 text-center flex items-center justify-center transition-colors duration-700">
+                            Search
+                        </button>
+                    </div>
+                    <div id="searchResults" class="hidden absolute top-[100%] left-0 right-0 mt-3 bg-themeCard border border-themeBorder/80 rounded-xl max-h-[65vh] overflow-y-auto shadow-2xl flex-col z-40 divide-y divide-themeBorder/30"></div>
+                </div>
+
+                <div class="relative w-full bg-themeBg/90 rounded-2xl border border-themeBorder/60 shadow-heavy p-6 flex flex-col items-center justify-center z-10 overflow-hidden min-h-[300px] card-3d transition-colors duration-700" id="playerWrapper">
+                    
+                    <div id="youtubePlayer" class="absolute w-1 h-1 opacity-0 pointer-events-none -z-50"></div>
+                    
+                    <div id="playerPlaceholder" class="flex flex-col items-center justify-center text-themeMuted space-y-6 py-10 w-full h-full animate-float">
+                        <div class="relative w-28 h-28 flex items-center justify-center">
+                            <div class="absolute inset-0 rounded-full border-2 border-themeAccent/20 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                            <div class="absolute inset-4 rounded-full border-2 border-themeAccent/30 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_0.8s]"></div>
+                            
+                            <div class="relative w-16 h-16 rounded-full bg-black/40 flex items-center justify-center shadow-[inset_0_4px_10px_rgba(0,0,0,0.8),0_0_20px_rgb(var(--color-accent)_/_0.3)] border border-themeBorder/60 card-3d">
+                                <div class="flex items-center justify-center space-x-1 h-6">
+                                    <div class="w-1.5 bg-themeAccent rounded-full anim-bar-2 transition-colors duration-700 opacity-80"></div>
+                                    <div class="w-1.5 bg-themeAccent rounded-full anim-bar-1 transition-colors duration-700 opacity-90"></div>
+                                    <div class="w-1.5 bg-themeAccent rounded-full anim-bar-3 transition-colors duration-700 opacity-80"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-sm font-medium tracking-wide">Search a track above to start the broadcast.</p>
+                    </div>
+
+                    <div id="musicPlayerUI" class="hidden w-full max-w-sm flex flex-col items-center relative z-10 py-2">
+                        <div class="relative w-48 h-48 md:w-56 md:h-56 rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.8)] mb-6 overflow-hidden border-2 border-themeBorder group shadow-glow">
+                            <img id="uiThumbnail" src="" crossorigin="Anonymous" class="w-full h-full object-cover transition transform duration-700 group-hover:scale-110" alt="Cover Art">
+                        </div>
+                        
+                        <div class="text-center w-full px-4 mb-5">
+                            <h2 id="uiTitle" class="text-xl md:text-2xl font-bold text-themeAccent truncate w-full tracking-wide drop-shadow-md transition-colors duration-700">Song Title</h2>
+                            <p id="uiArtist" class="text-sm text-themeMuted truncate w-full mt-1 font-medium transition-colors duration-700">Artist Name</p>
+                        </div>
+
+                        <div class="w-full flex items-center space-x-3 mb-6 px-2">
+                            <span id="currentTimeDisplay" class="text-xs text-themeText font-mono w-10 text-right font-bold transition-colors duration-700">0:00</span>
+                            <input type="range" id="timelineSlider" value="0" min="0" max="100" step="0.1" class="flex-1 h-2 bg-black/40 rounded-full appearance-none cursor-pointer shadow-inner border border-themeBorder/30 disabled:opacity-50" 
+                                oninput="isDraggingSlider=true" 
+                                onchange="seekTimeline(this.value)"
+                                onpointerup="isDraggingSlider=false"
+                                onpointercancel="isDraggingSlider=false">
+                            <span id="durationDisplay" class="text-xs text-themeText font-mono w-10 font-bold transition-colors duration-700">0:00</span>
+                        </div>
+
+                        <div id="hostPlaybackControls" class="hidden w-full flex-col items-center mt-2">
+                            <div class="bg-themeCard border-2 border-themeBorder/60 p-5 rounded-[2.5rem] shadow-[0_15px_35px_rgba(0,0,0,0.6),inset_0_4px_10px_rgba(255,255,255,0.05)] w-full max-w-[260px] flex flex-col items-center space-y-6 relative card-3d transition-colors duration-700">
+                                
+                                <div class="absolute top-3 w-16 h-1.5 bg-black/60 rounded-full overflow-hidden shadow-inner">
+                                    <div id="remoteLed" class="w-full h-full bg-themeAccent opacity-0 transition-opacity duration-200 shadow-glow"></div>
+                                </div>
+                                
+                                <p class="text-[10px] text-themeMuted uppercase tracking-widest font-bold mt-1 transition-colors duration-700"><i class="fa-solid fa-wifi mr-1 text-themeAccent animate-pulse"></i> Master Remote</p>
+                                
+                                <div class="flex items-center justify-center space-x-5 w-full">
+                                    <button onclick="skipTime(-5)" class="btn-3d w-14 h-14 rounded-full bg-black/40 text-themeAccent flex items-center justify-center border border-themeBorder/60 transition-colors duration-700">
+                                        <i class="fa-solid fa-backward-step text-lg"></i>
+                                    </button>
+                                    
+                                    <button onclick="togglePlayPause()" id="playPauseBtn" class="btn-3d w-20 h-20 rounded-full bg-themeAccent text-themeBtnText flex items-center justify-center shadow-btn border-4 border-themeCard transition-colors duration-700">
+                                        <i class="fa-solid fa-pause text-3xl"></i>
+                                    </button>
+                                    
+                                    <button onclick="skipTime(5)" class="btn-3d w-14 h-14 rounded-full bg-black/40 text-themeAccent flex items-center justify-center border border-themeBorder/60 transition-colors duration-700">
+                                        <i class="fa-solid fa-forward-step text-lg"></i>
+                                    </button>
+                                </div>
+
+                                <div class="w-full pt-4 border-t border-themeBorder/40 flex items-center justify-between px-1 transition-colors duration-700">
+                                    <div class="flex flex-col">
+                                        <span class="text-[11px] text-themeText font-semibold uppercase tracking-wider transition-colors duration-700">Device Audio</span>
+                                        <span class="text-[9px] text-themeMuted font-medium transition-colors duration-700" id="audioStatusText">Playing Locally</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                      <input type="checkbox" id="remoteMuteToggle" class="sr-only peer" checked onchange="toggleHostAudio(this.checked)">
+                                      <div class="w-10 h-5 bg-black/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-themeText after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500 shadow-inner"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p id="memberWaitingText" class="hidden text-xs text-themeAccent font-bold tracking-widest uppercase mt-4"><i class="fa-solid fa-satellite-dish mr-1 animate-pulse"></i> Syncing with Remote...</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="w-full lg:w-80 flex flex-col space-y-4">
+                <div class="card-3d bg-themeCard border border-themeBorder/50 rounded-xl p-4 flex flex-col flex-1 min-h-[20rem] transition-colors duration-700">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-themeMuted mb-3 flex items-center justify-between transition-colors duration-700">
+                        <span>Participants</span>
+                        <span id="peerCount" class="bg-black/30 text-themeAccent px-2 py-0.5 rounded-full text-xs shadow-inner border border-themeBorder/40">0</span>
+                    </h3>
+                    <div id="peerList" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="joinModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="card-3d bg-themeCard border border-themeBorder rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-heavy transition-colors duration-700">
+            <h3 class="text-lg font-bold text-themeAccent">Join Existing Room</h3>
+            <p class="text-xs text-themeText opacity-70">Enter the room code shared by the host.</p>
+            <input type="text" id="joinRoomCodeInput" placeholder="Enter Room Code" class="w-full bg-black/30 border border-themeBorder rounded-xl px-4 py-3 text-white placeholder-gray-600 uppercase tracking-widest text-center font-mono focus:outline-none focus:border-themeAccent shadow-inner transition">
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeJoinModal()" class="btn-3d flex-1 bg-black/40 text-themeAccent py-3 rounded-xl text-sm font-bold border border-themeBorder transition">Cancel</button>
+                <button onclick="joinRoom()" class="btn-3d flex-1 bg-themeAccent text-themeBtnText py-3 rounded-xl text-sm font-bold transition">Join</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="card-3d bg-themeCard border border-themeBorder rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-heavy transition-colors duration-700">
+            <h3 class="text-lg font-bold text-themeAccent">Settings</h3>
+            <div>
+                <label class="block text-xs font-semibold text-themeMuted uppercase tracking-wider mb-1">WebSocket Server URL</label>
+                <input type="text" id="wsUrlInput" class="w-full bg-black/30 border border-themeBorder rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-themeAccent shadow-inner transition">
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="closeSettingsModal()" class="btn-3d flex-1 bg-black/40 text-themeAccent py-3 rounded-xl text-sm font-bold border border-themeBorder transition">Cancel</button>
+                <button onclick="saveSettings()" class="btn-3d flex-1 bg-themeAccent text-themeBtnText py-3 rounded-xl text-sm font-bold transition">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script>
+        const YOUTUBE_API_KEY = 'AIzaSyDzvPXVkAkiW6xMzo6zV67lpMNRF_lM200';
+
+        let ws = null;
+        let accountId = localStorage.getItem('syncbeat_account_id');
+        if (!accountId) {
+            accountId = 'user_' + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('syncbeat_account_id', accountId);
+        }
+
+        const defaultWsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
+        let wsUrl = localStorage.getItem('syncbeat_ws_url') || defaultWsUrl;
+        document.getElementById('wsUrlInput').value = wsUrl;
+
+        let currentRoomCode = null;
+        let isHost = false;
+        let inRoom = false;
+        
+        let ytPlayer = null;
+        let ytScriptLoaded = false;
+        let ytApiReady = false;
+        
+        let pendingYtId = null;
+        let isSyncingFromRemote = false;
+        let currentLoadedId = null;
+        let isDraggingSlider = false;
+
+        const savedName = localStorage.getItem('syncbeat_name');
+        if (savedName) document.getElementById('userNameInput').value = savedName;
+
+        document.addEventListener('click', (event) => {
+            const wrapper = document.getElementById('hostControlsWrapper');
+            const results = document.getElementById('searchResults');
+            if (wrapper && !wrapper.contains(event.target)) results.classList.add('hidden');
+        });
+
+        function applyGoldenTheme() {
+            const root = document.documentElement;
+            root.style.setProperty('--color-accent', '251 191 36');
+            root.style.setProperty('--color-bg-base', '23 20 15');
+            root.style.setProperty('--color-bg-card', '36 31 22');
+            root.style.setProperty('--color-text-main', '254 243 199');
+            root.style.setProperty('--color-text-muted', '202 138 4');
+            root.style.setProperty('--color-border', '113 63 18');
+            root.style.setProperty('--color-shadow', '251 191 36');
+            root.style.setProperty('--color-btn-text', '69 26 3');
+            document.getElementById('metaThemeColor').setAttribute('content', '#fbbf24');
+        }
+
+        function applyThumbnailTheme() {
+            if (!inRoom || !isHost) return;
+
+            const img = document.getElementById('uiThumbnail');
+            if (!img.complete || img.naturalHeight === 0) return;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+
+            try {
+                ctx.drawImage(img, 0, 0);
+                const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let r=0, g=0, b=0, count=0;
+                
+                for (let i = 0; i < data.length; i += 16) { 
+                    r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+                }
+                
+                r = Math.floor(r/count); g = Math.floor(g/count); b = Math.floor(b/count);
+
+                const luminance = 0.299*r + 0.587*g + 0.114*b;
+                if (luminance < 60) {
+                    r = Math.min(255, r + 60); g = Math.min(255, g + 60); b = Math.min(255, b + 60);
+                }
+
+                const accentStr = `${r} ${g} ${b}`;
+                const bgBase = `${Math.floor(r*0.08)} ${Math.floor(g*0.08)} ${Math.floor(b*0.08)}`;
+                const bgCard = `${Math.floor(r*0.12)} ${Math.floor(g*0.12)} ${Math.floor(b*0.12)}`;
+                const textMain = `${Math.floor(r + (255-r)*0.85)} ${Math.floor(g + (255-g)*0.85)} ${Math.floor(b + (255-b)*0.85)}`;
+                const textMuted = `${Math.floor(r*0.8)} ${Math.floor(g*0.8)} ${Math.floor(b*0.8)}`;
+                const border = `${Math.floor(r*0.4)} ${Math.floor(g*0.4)} ${Math.floor(b*0.4)}`;
+                const btnText = (0.299*r + 0.587*g + 0.114*b) > 128 ? '0 0 0' : '255 255 255';
+
+                const root = document.documentElement;
+                root.style.setProperty('--color-accent', accentStr);
+                root.style.setProperty('--color-bg-base', bgBase);
+                root.style.setProperty('--color-bg-card', bgCard);
+                root.style.setProperty('--color-text-main', textMain);
+                root.style.setProperty('--color-text-muted', textMuted);
+                root.style.setProperty('--color-border', border);
+                root.style.setProperty('--color-shadow', accentStr);
+                root.style.setProperty('--color-btn-text', btnText);
+                
+                document.getElementById('metaThemeColor').setAttribute('content', `rgb(${r}, ${g}, ${b})`);
+            } catch (e) {
+                applyGoldenTheme(); 
+            }
+        }
+
+        document.getElementById('uiThumbnail').onload = () => {
+            if (ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                applyThumbnailTheme();
+            }
+        };
+
+        function connectWebSocket() {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.className = "w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]";
+            statusText.textContent = "Connecting...";
+
+            try { ws = new WebSocket(wsUrl); } 
+            catch (e) {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
+                statusText.textContent = "Connection Error";
+                return;
+            }
+
+            ws.onopen = () => {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]";
+                statusText.textContent = "Connected";
+                startPingInterval();
+                
+                if (inRoom && currentRoomCode) {
+                    const name = getUserName();
+                    if (isHost) {
+                        ws.send(JSON.stringify({ type: 'HOST_ROOM', code: currentRoomCode, name: name, accountId: accountId }));
+                    } else {
+                        ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: currentRoomCode, name: name, accountId: accountId }));
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
+                statusText.textContent = "Disconnected";
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = () => {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]";
+                statusText.textContent = "Error";
+            };
+
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch (e) { return; }
+                handleServerMessage(msg);
+            };
+        }
+
+        let pingInterval = null;
+        function startPingInterval() {
+            if (pingInterval) clearInterval(pingInterval);
+            pingInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'PING' }));
+            }, 25000);
+        }
+
+        connectWebSocket();
+
+        function handleServerMessage(msg) {
+            switch (msg.type) {
+                case 'PONG': break;
+                case 'ROOM_CREATED':
+                case 'ROOM_HOSTED_SUCCESS':
+                    currentRoomCode = msg.code;
+                    isHost = true;
+                    onRoomJoinedSuccess();
+                    break;
+                case 'ROOM_JOINED':
+                case 'ROOM_JOIN_SUCCESS':
+                    currentRoomCode = msg.code;
+                    isHost = false;
+                    onRoomJoinedSuccess();
+                    break;
+                case 'ROOM_NOT_FOUND':
+                    alert('Room not found or host has disconnected.');
+                    inRoom = false;
+                    leaveRoom();
+                    break;
+                case 'PEER_LIST':
+                    updatePeerList(msg.peers);
+                    break;
+                case 'PLAY_YOUTUBE':
+                case 'LOAD_VIDEO':
+                    if (!isHost) loadAndPlayYouTube(msg.ytId || msg.videoId, msg.time || 0, msg);
+                    break;
+                case 'SYNC_TIME':
+                case 'SEEK_TIME':
+                    if (ytPlayer && typeof ytPlayer.seekTo === 'function' && !isHost) {
+                        const currentTime = ytPlayer.getCurrentTime();
+                        const targetTime = (msg.time || 0) + 0.15; 
+                        
+                        if (Math.abs(currentTime - targetTime) > 0.5 || msg.type === 'SEEK_TIME') {
+                            isSyncingFromRemote = true;
+                            ytPlayer.seekTo(targetTime, true);
+                            if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) ytPlayer.playVideo();
+                            setTimeout(() => { isSyncingFromRemote = false; }, 400);
+                        }
+                    }
+                    break;
+                case 'CONTROL':
+                    if (ytPlayer && typeof ytPlayer.playVideo === 'function' && !isHost) {
+                        isSyncingFromRemote = true;
+                        if (msg.action === 'play') ytPlayer.playVideo();
+                        if (msg.action === 'pause') ytPlayer.pauseVideo();
+                        setTimeout(() => { isSyncingFromRemote = false; }, 400);
+                    }
+                    break;
+                case 'ROOM_CLOSED':
+                    alert('The host has closed the room.');
+                    leaveRoom();
+                    break;
+            }
+        }
+
+        function getUserName() {
+            const nameInput = document.getElementById('userNameInput');
+            let name = nameInput.value.trim();
+            if (!name) name = 'User_' + Math.floor(Math.random() * 1000);
+            localStorage.setItem('syncbeat_name', name);
+            return name;
+        }
+
+        function createRoom() {
+            const name = getUserName();
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            ws.send(JSON.stringify({ type: 'CREATE_ROOM', code: code, name: name, accountId: accountId }));
+        }
+
+        function showJoinModal() { document.getElementById('joinModal').classList.remove('hidden'); }
+        function closeJoinModal() { document.getElementById('joinModal').classList.add('hidden'); }
+
+        function joinRoom() {
+            const codeInput = document.getElementById('joinRoomCodeInput');
+            const code = codeInput.value.trim().toUpperCase();
+            if (!code) return;
+            const name = getUserName();
+            ws.send(JSON.stringify({ type: 'JOIN_ROOM', code: code, name: name, accountId: accountId }));
+            closeJoinModal();
+        }
+
+        function onYouTubeIframeAPIReady() {
+            ytScriptLoaded = true;
+            if (currentRoomCode && !ytPlayer) initYouTubePlayer();
+        }
+
+        function initYouTubePlayer() {
+            ytPlayer = new YT.Player('youtubePlayer', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'autoplay': 1, 'controls': 0, 'disablekb': 1,
+                    'modestbranding': 1, 'rel': 0, 'playsinline': 1, 
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': (event) => {
+                        ytApiReady = true;
+                        const muteToggle = document.getElementById('remoteMuteToggle');
+                        if (muteToggle && !muteToggle.checked) ytPlayer.mute();
+                        if (pendingYtId) { event.target.loadVideoById({videoId: pendingYtId, startSeconds: 0}); pendingYtId = null; }
+                    },
+                    'onStateChange': (event) => {
+                        const btn = document.getElementById('playPauseBtn');
+                        if (event.data === YT.PlayerState.PLAYING) {
+                            btn.innerHTML = '<i class="fa-solid fa-pause text-3xl"></i>';
+                            if (isHost) applyThumbnailTheme();
+                        } else {
+                            btn.innerHTML = '<i class="fa-solid fa-play text-3xl ml-1"></i>';
+                            applyGoldenTheme();
+                        }
+                    },
+                    'onError': (event) => {
+                        applyGoldenTheme();
+                        if (isHost) {
+                            if (event.data === 150 || event.data === 101) alert('Playback Blocked: Embedding disabled for this track.');
+                            else alert('Playback Error (' + event.data + ').');
+                        }
+                    }
+                }
+            });
+        }
+
+        function onRoomJoinedSuccess() {
+            inRoom = true;
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('roomView').classList.remove('hidden');
+            document.getElementById('roomView').classList.add('flex');
+            document.getElementById('displayRoomCode').textContent = currentRoomCode;
+
+            const roleBadge = document.getElementById('roleBadge');
+            const hostControls = document.getElementById('hostControlsWrapper');
+            const customControls = document.getElementById('hostPlaybackControls');
+            const memberText = document.getElementById('memberWaitingText');
+            const slider = document.getElementById('timelineSlider');
+
+            if (isHost) {
+                roleBadge.textContent = 'Host';
+                roleBadge.className = 'text-xs px-2.5 py-1 rounded-full font-bold uppercase bg-themeAccent text-themeBtnText border border-themeBorder shadow-inner';
+                hostControls.classList.remove('hidden');
+                customControls.classList.remove('hidden');
+                customControls.classList.add('flex');
+                memberText.classList.add('hidden');
+                slider.disabled = false;
+            } else {
+                roleBadge.textContent = 'Member';
+                roleBadge.className = 'text-xs px-2.5 py-1 rounded-full font-bold uppercase bg-black/40 text-themeText border border-themeBorder shadow-inner';
+                hostControls.classList.add('hidden');
+                customControls.classList.add('hidden');
+                customControls.classList.remove('flex');
+                memberText.classList.remove('hidden');
+                slider.disabled = true;
+            }
+
+            if (ytScriptLoaded && !ytPlayer) initYouTubePlayer();
+        }
+
+        // FIXED LEAVE ROOM FUNCTION (Safely handles player cleanup & state resets without freezing)
+        function leaveRoom() {
+            try {
+                if (isHost && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'CLOSE_ROOM' }));
+                }
+            } catch (e) {}
+
+            currentRoomCode = null;
+            isHost = false;
+            inRoom = false;
+            
+            applyGoldenTheme();
+            
+            const roomView = document.getElementById('roomView');
+            const homeView = document.getElementById('homeView');
+            if (roomView) {
+                roomView.classList.add('hidden');
+                roomView.classList.remove('flex');
+            }
+            if (homeView) {
+                homeView.classList.remove('hidden');
+            }
+            
+            try {
+                if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
+                    ytPlayer.stopVideo();
+                }
+                if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+                    ytPlayer.destroy();
+                }
+            } catch (e) {}
+
+            ytPlayer = null;
+            ytApiReady = false;
+            
+            const placeholder = document.getElementById('playerPlaceholder');
+            const playerUI = document.getElementById('musicPlayerUI');
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (playerUI) playerUI.classList.add('hidden');
+            currentLoadedId = null;
+        }
+
+        function copyRoomCode() {
+            navigator.clipboard.writeText(currentRoomCode);
+            alert('Room code copied to clipboard: ' + currentRoomCode);
+        }
+
+        function extractYouTubeId(url) {
+            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : (url.length === 11 ? url : null);
+        }
+
+        function handleSearchKey(event) { if (event.key === 'Enter') searchMedia(); }
+
+        async function fetchSearchResults(query) {
+            try {
+                const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
+                if (!searchRes.ok) throw new Error('API request failed');
+                
+                const searchData = await searchRes.json();
+                if (!searchData.items || searchData.items.length === 0) return null;
+
+                const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+                const statsRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`);
+                const statsData = await statsRes.json();
+
+                return searchData.items.map((item, index) => {
+                    const stats = statsData.items[index];
+                    let duration = "0:00";
+                    if (stats && stats.contentDetails && stats.contentDetails.duration) {
+                        const match = stats.contentDetails.duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+                        const h = (match[1] || '').replace('H', '');
+                        const m = (match[2] || '').replace('M', '') || '0';
+                        const s = (match[3] || '').replace('S', '') || '0';
+                        duration = h ? `${h}:${m.padStart(2, '0')}:${s.padStart(2, '0')}` : `${m}:${s.padStart(2, '0')}`;
+                    }
+                    return {
+                        videoId: item.id.videoId, title: item.snippet.title,
+                        uploaderName: item.snippet.channelTitle, durationText: duration,
+                        thumbUrl: `https://i.ytimg.com/vi/${item.id.videoId}/hqdefault.jpg`
+                    };
+                });
+            } catch (e) { return null; }
+        }
+
+        async function searchMedia() {
+            if (!isHost) return;
+            const input = document.getElementById('mediaUrlInput');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const directId = extractYouTubeId(query);
+            if (directId) {
+                playSelectedVideo({
+                    videoId: directId, title: "Synchronized Track", uploaderName: "Direct Link",
+                    thumbUrl: `https://i.ytimg.com/vi/${directId}/hqdefault.jpg`
+                });
+                return;
+            }
+
+            const playBtn = document.getElementById('searchBtn');
+            const oldText = playBtn.innerHTML;
+            playBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            document.getElementById('searchResults').classList.add('hidden');
+
+            const results = await fetchSearchResults(query);
+            playBtn.innerHTML = oldText; 
+            
+            if (!results || results.length === 0) { alert('Search failed.'); return; }
+            displaySearchResults(results);
+        }
+
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+            
+            results.forEach(video => {
+                const item = document.createElement('div');
+                item.className = "flex flex-col bg-black/20 cursor-pointer hover:bg-black/40 transition pb-4 border-b border-themeBorder/40";
+                item.onclick = () => { document.getElementById('searchResults').classList.add('hidden'); playSelectedVideo(video); };
+                item.innerHTML = `
+                    <div class="w-full aspect-video bg-black relative overflow-hidden">
+                        <img src="${video.thumbUrl}" class="w-full h-full object-cover" onerror="this.src=''" />
+                        <span class="absolute bottom-2 right-2 bg-black/80 text-themeText text-xs font-bold px-1.5 py-0.5 rounded shadow-lg">${video.durationText}</span>
+                    </div>
+                    <div class="px-3 pt-3 flex items-start space-x-3">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-semibold text-themeText leading-tight line-clamp-2">${escapeHtml(video.title)}</h4>
+                            <p class="text-[11px] text-themeMuted mt-1">${escapeHtml(video.uploaderName)}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+            container.classList.remove('hidden'); container.classList.add('flex');
+        }
+
+        function flashRemoteLed() {
+            const led = document.getElementById('remoteLed');
+            if(led) { led.style.opacity = '1'; setTimeout(() => { led.style.opacity = '0'; }, 200); }
+        }
+
+        function toggleHostAudio(isUnmuted) {
+            const statusText = document.getElementById('audioStatusText');
+            if (isUnmuted) {
+                if (ytPlayer && typeof ytPlayer.unMute === 'function') ytPlayer.unMute();
+                statusText.textContent = "Playing Locally"; statusText.classList.remove('text-red-400'); statusText.classList.add('text-themeMuted');
+            } else {
+                if (ytPlayer && typeof ytPlayer.mute === 'function') ytPlayer.mute();
+                statusText.textContent = "Muted (Remote Only)"; statusText.classList.remove('text-themeMuted'); statusText.classList.add('text-red-400');
+            }
+        }
+
+        function triggerBrowserWakeup() {
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') { ytPlayer.playVideo(); ytPlayer.pauseVideo(); }
+        }
+
+        function playSelectedVideo(videoData) {
+            flashRemoteLed(); triggerBrowserWakeup();
+            const mediaMsg = { type: 'PLAY_YOUTUBE', ytId: videoData.videoId, title: videoData.title, artist: videoData.uploaderName, thumb: videoData.thumbUrl, time: 0 };
+            ws.send(JSON.stringify(mediaMsg)); loadAndPlayYouTube(mediaMsg.ytId, 0, mediaMsg);
+        }
+
+        function togglePlayPause() {
+            if(!ytPlayer || !ytPlayer.getPlayerState) return;
+            flashRemoteLed(); triggerBrowserWakeup();
+            const state = ytPlayer.getPlayerState();
+            if (state === YT.PlayerState.PLAYING) { ytPlayer.pauseVideo(); ws.send(JSON.stringify({ type: 'CONTROL', action: 'pause' })); } 
+            else { ytPlayer.playVideo(); ws.send(JSON.stringify({ type: 'CONTROL', action: 'play' })); }
+        }
+
+        function skipTime(offset) {
+            if(!ytPlayer || !ytPlayer.getCurrentTime) return;
+            flashRemoteLed(); triggerBrowserWakeup();
+            let t = ytPlayer.getCurrentTime() + offset; if (t < 0) t = 0;
+            ytPlayer.seekTo(t, true); ws.send(JSON.stringify({ type: 'SEEK_TIME', time: t }));
+        }
+
+        function seekTimeline(value) {
+            isDraggingSlider = false; if(!ytPlayer || !ytPlayer.getDuration) return;
+            flashRemoteLed(); triggerBrowserWakeup();
+            const t = (value / 100) * ytPlayer.getDuration();
+            ytPlayer.seekTo(t, true); ws.send(JSON.stringify({ type: 'SEEK_TIME', time: t }));
+        }
+
+        function loadAndPlayYouTube(ytId, startTime = 0, meta = null) {
+            document.getElementById('playerPlaceholder').classList.add('hidden');
+            document.getElementById('musicPlayerUI').classList.remove('hidden');
+            
+            let finalThumbUrl = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+            if (meta && meta.thumb) finalThumbUrl = meta.thumb;
+            
+            const corsProxiedUrl = `https://wsrv.nl/?url=${encodeURIComponent(finalThumbUrl)}`;
+            
+            const imgEl = document.getElementById('uiThumbnail');
+            imgEl.crossOrigin = "Anonymous";
+            imgEl.src = corsProxiedUrl;
+            
+            if (meta) {
+                document.getElementById('uiTitle').textContent = meta.title || 'Unknown Title';
+                document.getElementById('uiArtist').textContent = meta.artist || 'Unknown Artist';
+            } else {
+                document.getElementById('uiTitle').textContent = 'Synchronized Track'; document.getElementById('uiArtist').textContent = 'Loading...';
+            }
+            
+            if (currentLoadedId === ytId && ytPlayer) {
+                if (ytPlayer.getPlayerState && ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) ytPlayer.playVideo();
+                return;
+            }
+            currentLoadedId = ytId;
+            
+            if (!ytApiReady || !ytPlayer) { pendingYtId = ytId; return; }
+            ytPlayer.loadVideoById({videoId: ytId, startSeconds: startTime});
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return "0:00";
+            seconds = Math.floor(seconds);
+            const m = Math.floor(seconds / 60); const s = seconds % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        setInterval(() => {
+            if (ytPlayer && ytPlayer.getCurrentTime && !document.getElementById('musicPlayerUI').classList.contains('hidden')) {
+                const current = ytPlayer.getCurrentTime(); const total = ytPlayer.getDuration() || 0;
+                document.getElementById('currentTimeDisplay').textContent = formatTime(current);
+                document.getElementById('durationDisplay').textContent = formatTime(total);
+                if (!isDraggingSlider && total > 0) document.getElementById('timelineSlider').value = (current / total) * 100;
+            }
+        }, 500);
+
+        let syncCounter = 0;
+        setInterval(() => {
+            if (isHost && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+                if (ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+                    syncCounter++;
+                    if (syncCounter >= 1) { ws.send(JSON.stringify({ type: 'SYNC_TIME', time: ytPlayer.getCurrentTime() })); syncCounter = 0; }
+                }
+            }
+        }, 1500);
+
+        function updatePeerList(peers) {
+            document.getElementById('peerCount').textContent = peers.length;
+            const listContainer = document.getElementById('peerList');
+            listContainer.innerHTML = '';
+            peers.forEach(peer => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between bg-black/20 border border-themeBorder/40 px-3 py-2 rounded-lg text-xs shadow-inner transition-colors duration-700";
+                item.innerHTML = `<span class="font-medium text-themeText flex items-center space-x-2"><i class="fa-solid fa-user text-themeMuted text-xs"></i><span>${escapeHtml(peer.name)}</span></span><span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${peer.role === 'HOST' ? 'bg-themeAccent/20 text-themeAccent border border-themeAccent/50' : 'bg-black/40 text-themeMuted'}">${peer.role}</span>`;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+        
+        function saveSettings() {
+            const input = document.getElementById('wsUrlInput'); const val = input.value.trim();
+            if (val) { wsUrl = val; localStorage.setItem('syncbeat_ws_url', wsUrl); connectWebSocket(); }
+            closeSettingsModal();
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
+
